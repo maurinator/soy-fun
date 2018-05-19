@@ -2,7 +2,9 @@ import * as fs from 'fs';
 import { SoyTemplate } from './Soy';
 import { 
   IConnection,
-  Position
+  Position,
+  TextDocument,
+  TextDocuments
 } from 'vscode-languageserver';
 import { 
 	TemplateIterator, 
@@ -23,7 +25,7 @@ export class Files {
           let NamespaceToken = new NamespaceIterator(FileContents).next();
           if (!NamespaceToken) return;
           let namespace = NamespaceToken.name;
-          let it = new TemplateIterator(FileContents);
+          let it = new TemplateIterator(TextDocument.create(file, 'soy', 0, FileContents));
           let template;
           while (template = it.next()) {
             this.add(namespace + template.name, new SoyTemplate(

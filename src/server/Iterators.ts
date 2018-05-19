@@ -1,3 +1,5 @@
+import { TextDocument } from "vscode-languageclient/lib/main";
+
 interface Iterator<SoyToken> {
   next(value?: any): SoyToken;
   peek(value?: any): SoyToken;
@@ -13,6 +15,7 @@ interface SoyToken {
 
   comments?: string;
   params?: string[];
+  type: string;
 }
 
 abstract class BaseIterator implements Iterator<SoyToken> {
@@ -41,7 +44,8 @@ abstract class TokenIterator extends BaseIterator {
           name: m[2],          
           contents: m[1],
           line: lineIndex,
-          character: characterIndex
+          character: characterIndex,
+          type: 'generic'
         });
       }
     }
@@ -49,13 +53,17 @@ abstract class TokenIterator extends BaseIterator {
 }
 
 export class TemplateIterator extends BaseIterator {
-  constructor(public data: string, public rgx: RegExp = /(\/\*{2}\n(\s*\/\/\s*.*\s*|\s*\*\s+.*\n)*\s*\*\/\n)({template\s+(\w+|.*)})|({template\s+(\w+|.*)})/g) {
+  public rgx: RegExp = /(\/\*{2}\n(\s*\/\/\s*.*\s*|\s*\*\s+.*\n)*\s*\*\/\n)({template\s+(\w+|.*)})|({template\s+(\w+|.*)})/g
+  constructor(public data: TextDocument) {
     super();
     let m;
-    while (m = rgx.exec(data)) {
+    let strDoc = data.getText();
+    while (m = this.rgx.exec(strDoc)) {
+      let offset = m.index;      
       let comments = m[1];
       let params: string[] = [];
       if (comments) {
+        offset += comments.length;
         let paramRgx = /(\s\*\s+@param\?{0,1}\s+(.*)\n)/g;
         let p;
         while (p = paramRgx.exec(comments)) {
@@ -63,15 +71,17 @@ export class TemplateIterator extends BaseIterator {
           params = params.concat(paramName);
         }
       }
+      let position = data.positionAt(offset);
       let contents = m[3];
       let name = m[4] || m[6];
       this.tokens = this.tokens.concat({
         name: name,
         contents: contents,
-        line: 0,
-        character: 0,
+        line: position.line,
+        character: position.character,
         comments: comments,
-        params: params
+        params: params,
+        type: 'template'
       });
     }
   }

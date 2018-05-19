@@ -1,6 +1,5 @@
 'use strict';
 
-// import * as fs from 'fs';
 import * as path from 'path';
 import {
 	IPCMessageReader, IPCMessageWriter, createConnection, IConnection, TextDocuments, InitializeResult, TextDocumentPositionParams, CompletionItem,
@@ -86,7 +85,7 @@ connection.onCompletion((_textDocumentPosition: TextDocumentPositionParams): Com
 	for (let key of files.all()) {
 		let template = files.get(key)[0];
 		let label = `{call ${key}`;
-		if (template.params) {
+		if (template.params.length) {
 			label += '}';
 			for (let param of template.params) {
 				label += `\n  {param ${param}: '' /}`;
