@@ -3,8 +3,7 @@ import { SoyTemplate } from './Soy';
 import { 
   IConnection,
   Position,
-  TextDocument,
-  TextDocuments
+  TextDocument
 } from 'vscode-languageserver';
 import { 
 	TemplateIterator, 
