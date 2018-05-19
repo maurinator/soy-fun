@@ -12,6 +12,20 @@
     "engines": {
         "vscode": "^1.22.0"
     },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onLanguage:soy"
+    ],
+    "main": "./client/out/src/extension",
+    "contributes": {
+        "configuration": {
+            "type": "object",
+            "title": "configuration",
+            "properties": {}
+        }
+    },
     "scripts": {
         "postinstall": "cd server && npm install && cd ../client && npm install && cd ..",
         "compile": "tsc -p client/tsconfig.json && cd server && npm run installServer && cd .. && tsc -p server/tsconfig.json",
