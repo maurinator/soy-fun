@@ -1,0 +1,22 @@
+{
+	"name": "soy-fun-language-server",
+	"description": "Soy Lang Server",
+	"version": "0.0.1",
+	"author": "maurinator",
+	"license": "MIT",
+	"engines": {
+		"node": "*"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/maurinator/SoyFun"
+	},
+	"dependencies": {
+		"vscode-languageserver": "^4.1.2"
+	},
+	"scripts": {
+		"installServer": "installServerIntoExtension ../client ./package.json ./tsconfig.json",
+		"compile": "installServerIntoExtension ../client ./package.json ./tsconfig.json && tsc -p .",
+		"watch": "installServerIntoExtension ../client ./package.json ./tsconfig.json && tsc -w -p ."
+	}
+}
