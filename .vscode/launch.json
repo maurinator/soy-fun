@@ -15,14 +15,15 @@
 			"outFiles": [
 				"${workspaceRoot}/build/**/*.js"
 			],
-			"preLaunchTask": "npm: watch"
+			"preLaunchTask": "npm: compile"
 		},
 		{
 			"name": "Attach to Server",
 			"type": "node",
 			"request": "attach",
 			"port": 6009,
-			"sourceMaps": true
+			"sourceMaps": true,
+			"outFiles": []
 		}
 	]
 }
