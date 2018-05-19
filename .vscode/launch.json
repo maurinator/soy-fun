@@ -15,7 +15,7 @@
 			"outFiles": [
 				"${workspaceRoot}/build/**/*.js"
 			],
-			"preLaunchTask": "npm: compile"
+			"preLaunchTask": "npm: watch"
 		},
 		{
 			"name": "Attach to Server",

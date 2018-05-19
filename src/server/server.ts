@@ -1,74 +1,30 @@
 'use strict';
 
-import * as fs from 'fs';
+// import * as fs from 'fs';
 import * as path from 'path';
 import {
 	IPCMessageReader, IPCMessageWriter, createConnection, IConnection, TextDocuments, InitializeResult, TextDocumentPositionParams, CompletionItem,
 	Location, Position, CompletionItemKind, TextEdit
 } from 'vscode-languageserver';
-import { SoyTemplate } from './Soy';
 import { runSafe } from './Utils';
 import { 
-	TemplateIterator, 
 	NamespaceIterator, 
 	CallIterator 
 } from './Iterators';
+import { Server } from './config';
+import { Files } from './Files';
 
 let connection: IConnection = createConnection(new IPCMessageReader(process), new IPCMessageWriter(process));
 let documents: TextDocuments = new TextDocuments();
 documents.listen(connection);
 
 let workspaceRoot: string;
-let SoyTemplateNameToFile = new Map<string, SoyTemplate[]>();
+let files: Files;
 
 connection.onInitialize((_params): InitializeResult => {
 	workspaceRoot = _params.rootPath;
-	// build initial template calls
-	let glob = require('glob');
-	glob('**/*.soy', (err: any, files: any) => {
-		if (err) return;
-		for (let f of files) {
-			fs.readFile(f, (err: NodeJS.ErrnoException, data: Buffer) => {
-				if (err) return;
-				let strData = data.toString();
-				let namespace = new NamespaceIterator(strData).next();
-				if (!namespace) return;
-				let it = new TemplateIterator(strData);
-				let template;
-				while (template = it.next()) {
-					SoyTemplateNameToFile.set(
-						namespace.name + template.name,
-						(SoyTemplateNameToFile.get(namespace.name + template.name) || []).concat([
-							new SoyTemplate(
-								f,
-								template.name,
-								namespace.name,
-								Position.create(
-									template.line,
-									0
-								),
-								Position.create(
-									template.line,
-									0
-								),
-								template.comments,
-								template.params
-							)
-						])
-					);
-				}
-			});
-		}		
-	});
-	return {
-		capabilities: {
-			definitionProvider: true,
-			textDocumentSync: documents.syncKind,
-			completionProvider: {
-				resolveProvider: true
-			}
-		}
-	}
+	files = new Files(connection);
+	return Server.Config;
 });
 
 connection.onDefinition((definitionParams, token) => {
@@ -95,9 +51,9 @@ connection.onDefinition((definitionParams, token) => {
 		} else {
 			t = token.name;
 		}
-		if (!SoyTemplateNameToFile.has(t)) return null;
+		if (!files.get(t).length) return null;
 		let result: Location[] = [];
-		for (let file of SoyTemplateNameToFile.get(t)) {
+		for (let file of files.get(t)) {
 			result = result.concat([{
 				uri: 'file://' + path.resolve(workspaceRoot + '/' + file.uri),
 				range: {
@@ -127,8 +83,8 @@ connection.onCompletion((_textDocumentPosition: TextDocumentPositionParams): Com
 	}
 
 	let result = [];
-	for (let key of SoyTemplateNameToFile.keys()) {
-		let template = SoyTemplateNameToFile.get(key)[0];
+	for (let key of files.all()) {
+		let template = files.get(key)[0];
 		let label = `{call ${key}`;
 		if (template.params) {
 			label += '}';
@@ -146,7 +102,7 @@ connection.onCompletion((_textDocumentPosition: TextDocumentPositionParams): Com
 				start: Position.create(token.line, token.character),
 				end: Position.create(token.line, token.character + token.contents.length)
 			}, label): null,
-			documentation: template.documentation // first item's documentation
+			documentation: template.documentation
 		});
 	}
 	return result;

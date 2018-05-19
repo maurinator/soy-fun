@@ -14,7 +14,14 @@
 		{
 			"type": "npm",
 			"script": "watch",
-			"problemMatcher": []
+			"isBackground": true,
+			"problemMatcher": [
+				"$tsc-watch"
+			],
+			"presentation": {
+				"panel": "dedicated",
+				"reveal": "never"
+			}
 		}
 	]
 }

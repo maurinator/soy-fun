@@ -49,7 +49,7 @@ abstract class TokenIterator extends BaseIterator {
 }
 
 export class TemplateIterator extends BaseIterator {
-  constructor(public data: string, public rgx: RegExp = /(\/\*{2}\n(\s\*\s+.*\n)*\s*\*\/\n)({template\s+(\w+|.*)})|({template\s+(\w+|.*)})/g) {
+  constructor(public data: string, public rgx: RegExp = /(\/\*{2}\n(\s*\/\/\s*.*\s*|\s*\*\s+.*\n)*\s*\*\/\n)({template\s+(\w+|.*)})|({template\s+(\w+|.*)})/g) {
     super();
     let m;
     while (m = rgx.exec(data)) {
@@ -64,7 +64,7 @@ export class TemplateIterator extends BaseIterator {
         }
       }
       let contents = m[3];
-      let name = m[4];
+      let name = m[4] || m[6];
       this.tokens = this.tokens.concat({
         name: name,
         contents: contents,
