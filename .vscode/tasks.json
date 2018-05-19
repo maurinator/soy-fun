@@ -74,6 +74,16 @@
 			"problemMatcher": [
 				"$tsc-watch"
 			]
+		},
+		{
+			"type": "npm",
+			"script": "compile",
+			"problemMatcher": []
+		},
+		{
+			"type": "npm",
+			"script": "package",
+			"problemMatcher": []
 		}
 	]
 }
