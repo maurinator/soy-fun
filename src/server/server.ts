@@ -36,6 +36,9 @@ connection.onInitialize((_params): InitializeResult => {
 				let it = new TemplateIterator(strData);
 				let template;
 				while (template = it.next()) {
+					connection.console.log(template.name);
+					connection.console.log(template.name);
+					connection.console.log(template.name);
 					SoyTemplateNameToFile.set(
 						namespace.name + template.name,
 						(SoyTemplateNameToFile.get(namespace.name + template.name) || []).concat([
