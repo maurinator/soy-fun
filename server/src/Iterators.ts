@@ -10,13 +10,27 @@ interface SoyToken {
   contents: string;
   line: number;
   character: number;
+
+  comments?: string;
+  params?: string[];
 }
 
-abstract class BaseTokenIterator implements Iterator<SoyToken> {
-  private pointer = 0;
-  private tokens: SoyToken[] = [];
-  
+abstract class BaseIterator implements Iterator<SoyToken> {
+  protected pointer = 0;
+  protected tokens: SoyToken[] = [];
+
+  public next(): SoyToken {
+    return this.pointer < this.tokens.length ? this.tokens[this.pointer++] : null;
+  }
+
+  public peek(): SoyToken {
+    return this.pointer < this.tokens.length ? this.tokens[this.pointer] : null;
+  }
+}
+
+abstract class TokenIterator extends BaseIterator {
   constructor(public data: string, public rgx: RegExp = /({[^{|}]*})/g) {
+    super();
     let lines = data.split('\n');
     for (let line of lines) {
       let m;
@@ -32,30 +46,45 @@ abstract class BaseTokenIterator implements Iterator<SoyToken> {
       }
     }
   }
+}
 
-  public next(): SoyToken {
-    return this.pointer < this.tokens.length ? this.tokens[this.pointer++] : null;
-  }
-
-  public peek(): SoyToken {
-    return this.pointer < this.tokens.length ? this.tokens[this.pointer] : null;
+export class TemplateIterator extends BaseIterator {
+  constructor(public data: string, public rgx: RegExp = /(\/\*{2}\n(\s\*\s+.*\n)*\s*\*\/\n)({template\s+(\w+|.*)})|({template\s+(\w+|.*)})/g) {
+    super();
+    let m;
+    while (m = rgx.exec(data)) {
+      let comments = m[1];
+      let params: string[] = [];
+      if (comments) {
+        let paramRgx = /(\s\*\s+@param\?{0,1}\s+(.*)\n)/g;
+        let p;
+        while (p = paramRgx.exec(comments)) {
+          let paramName = p[2];
+          params = params.concat(paramName);
+        }
+      }
+      let contents = m[3];
+      let name = m[4];
+      this.tokens = this.tokens.concat({
+        name: name,
+        contents: contents,
+        line: 0,
+        character: 0,
+        comments: comments,
+        params: params
+      });
+    }
   }
 }
 
-export class TemplateIterator extends BaseTokenIterator {
-  constructor(public data: string, public rgx: RegExp = /({template\s*([^{|}|\s]*)\s*[^{|}]*})/g) {
-    super(data, rgx);
+export class CallIterator extends TokenIterator {
+  constructor(public data: string) {
+    super(data, /({\/*call\s*([^{|}|\s]*)\s*[^{|}]*\/{0,1}})/g);
   }
 }
 
-export class CallIterator extends BaseTokenIterator {
-  constructor(public data: string, public rgx: RegExp = /({\/*call\s*([^{|}|\s]*)\s*[^{|}]*\/{0,1}})/g) {
-    super(data, rgx);
-  }
-}
-
-export class NamespaceIterator extends BaseTokenIterator {
-  constructor(public data: string, public rgx: RegExp = /({namespace\s+([^{|}|\s]*)\s*[^{|}]*})/g) {
-    super(data, rgx);
+export class NamespaceIterator extends TokenIterator {
+  constructor(public data: string) {
+    super(data, /({namespace\s+([^{|}|\s]*)\s*[^{|}]*})/g);
   }
 }

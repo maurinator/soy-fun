@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import {
 	IPCMessageReader, IPCMessageWriter, createConnection, IConnection, TextDocuments, InitializeResult, TextDocumentPositionParams, CompletionItem,
-	Location, Position, CompletionItemKind
+	Location, Position, CompletionItemKind, TextEdit
 } from 'vscode-languageserver';
 import { SoyTemplate } from './Soy';
 import { runSafe } from './Utils';
@@ -50,7 +50,9 @@ connection.onInitialize((_params): InitializeResult => {
 								Position.create(
 									template.line,
 									0
-								)
+								),
+								template.comments,
+								template.params
 							)
 						])
 					);
@@ -113,12 +115,38 @@ connection.onDidChangeWatchedFiles((_change) => {
 });
 
 connection.onCompletion((_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-	let result: CompletionItem[] = [];
+	let cursor = _textDocumentPosition.position;
+	let document = documents.get(_textDocumentPosition.textDocument.uri);
+	let it = new CallIterator(document.getText());
+	let token;
+	
+	while (token = it.next()) {
+		let tokenLength = token.character + token.contents.length;
+		let found = cursor.line == token.line && token.character <= cursor.character && cursor.character <= tokenLength;
+		if (found) break;
+	}
+
+	let result = [];
 	for (let key of SoyTemplateNameToFile.keys()) {
+		let template = SoyTemplateNameToFile.get(key)[0];
+		let label = `{call ${key}`;
+		if (template.params) {
+			label += '}';
+			for (let param of template.params) {
+				label += `\n  {param ${param}: '' /}`;
+			}
+			label += '\n{/call}';
+		} else {
+			label += ' /}';
+		}
 		result.push({
-			label: key, 
-			kind: CompletionItemKind.Text, 
-			data: result.length + 1
+			label: label, 
+			kind: CompletionItemKind.Keyword,
+			textEdit: token ? TextEdit.replace({
+				start: Position.create(token.line, token.character),
+				end: Position.create(token.line, token.character + token.contents.length)
+			}, label): null,
+			documentation: template.documentation // first item's documentation
 		});
 	}
 	return result;

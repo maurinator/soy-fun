@@ -3,7 +3,7 @@
 	"description": "Soy Lang Server",
 	"author": "maurinator",
 	"license": "MIT",
-	"version": "0.0.1",
+	"version": "0.0.1",		
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/maurinator/SoyFun"
