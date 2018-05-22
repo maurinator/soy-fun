@@ -2,16 +2,28 @@
 
 import * as path from 'path';
 import {
-	IPCMessageReader, IPCMessageWriter, createConnection, IConnection, TextDocuments, InitializeResult, TextDocumentPositionParams, CompletionItem,
-	Location, Position, CompletionItemKind, TextEdit
+	IPCMessageReader, 
+	IPCMessageWriter, 
+	createConnection, 
+	IConnection, 
+	TextDocuments, 
+	InitializeResult, 
+	TextDocumentPositionParams, 
+	CompletionItem,
+	Location,
+	CompletionItemKind,
+	Position,
+	TextEdit
 } from 'vscode-languageserver';
 import { runSafe } from './Utils';
 import { 
 	NamespaceIterator, 
-	CallIterator 
+	CallIterator,
+	TokenIterator,
 } from './Iterators';
 import { Server } from './config';
 import { Files } from './Files';
+import { Snippets } from './Snippets';
 
 let connection: IConnection = createConnection(new IPCMessageReader(process), new IPCMessageWriter(process));
 let documents: TextDocuments = new TextDocuments();
@@ -32,23 +44,17 @@ connection.onDefinition((definitionParams, token) => {
 		let cursor = document.positionAt(document.offsetAt(definitionParams.position));
 		let it = new CallIterator(document.getText());
 
-		let token;		
-		while (token = it.next()) {
-			if (!token.name) continue;
-			let tokenLength = token.character + token.contents.length;
-			let found = cursor.line == token.line && token.character <= cursor.character && cursor.character <= tokenLength;
-			if (found) break;
-		}
-		if (!token) return null;
+		let soyToken = it.get(cursor);
+		if (!soyToken) return null;
 
 		let t;
-		let isRelative = token.name[0] == '.';
+		let isRelative = soyToken.name[0] == '.';
 		if (isRelative) {
 			it = new NamespaceIterator(document.getText());
 			let namespace = it.next().name;
-			t = namespace + token.name;
+			t = namespace + soyToken.name;
 		} else {
-			t = token.name;
+			t = soyToken.name;
 		}
 		if (!files.get(t).length) return null;
 		let result: Location[] = [];
@@ -70,37 +76,21 @@ connection.onDidChangeWatchedFiles((_change) => {
 });
 
 connection.onCompletion((_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-	let cursor = _textDocumentPosition.position;
-	let document = documents.get(_textDocumentPosition.textDocument.uri);
-	let it = new CallIterator(document.getText());
-	let token;
+	let result: CompletionItem[] = Snippets(documents, _textDocumentPosition);
 	
-	while (token = it.next()) {
-		let tokenLength = token.character + token.contents.length;
-		let found = cursor.line == token.line && token.character <= cursor.character && cursor.character <= tokenLength;
-		if (found) break;
-	}
+	let document = documents.get(_textDocumentPosition.textDocument.uri);
+	let it = new TokenIterator(document.getText());
+	let token = it.get(_textDocumentPosition.position);
 
-	let result = [];
 	for (let key of files.all()) {
 		let template = files.get(key)[0];
-		let label = `{call ${key}`;
-		if (template.params.length) {
-			label += '}';
-			for (let param of template.params) {
-				label += `\n  {param ${param}: '' /}`;
-			}
-			label += '\n{/call}';
-		} else {
-			label += ' /}';
-		}
 		result.push({
-			label: label, 
-			kind: CompletionItemKind.Keyword,
+			label: key, 
+			kind: CompletionItemKind.Variable,
 			textEdit: token ? TextEdit.replace({
-				start: Position.create(token.line, token.character),
-				end: Position.create(token.line, token.character + token.contents.length)
-			}, label): null,
+				start: Position.create(token.line, token.character + 1),
+				end: Position.create(token.line, token.character + token.contents.length - 1)
+			}, key): null,
 			documentation: template.documentation
 		});
 	}
@@ -108,8 +98,6 @@ connection.onCompletion((_textDocumentPosition: TextDocumentPositionParams): Com
 });
 
 connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
-	// item.detail = `${item.label} details`;
-	// item.documentation = `${item.label} documentation`;
 	return item;
 });
 

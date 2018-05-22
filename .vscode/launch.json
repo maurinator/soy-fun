@@ -1,5 +1,14 @@
 {
 	"version": "0.2.0",
+	"compounds": [
+		{
+			"name": "Launch Extension",
+			"configurations": [
+				"Launch Client",
+				"Attach to Server"
+			]
+		}
+	],
 	// List of configurations. Add new configurations or edit existing ones.
 	"configurations": [
 		{

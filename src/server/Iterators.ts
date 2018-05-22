@@ -1,4 +1,5 @@
 import { TextDocument } from "vscode-languageclient/lib/main";
+import { Position } from 'vscode-languageserver';
 
 interface Iterator<SoyToken> {
   next(value?: any): SoyToken;
@@ -29,9 +30,19 @@ abstract class BaseIterator implements Iterator<SoyToken> {
   public peek(): SoyToken {
     return this.pointer < this.tokens.length ? this.tokens[this.pointer] : null;
   }
+
+  public get(position: Position): SoyToken {
+    this.pointer = 0;
+    for (let t = this.next(); t != null; t = this.next()) {
+      let tokenLength = t.character + t.contents.length;
+      let found = position.line == t.line && t.character <= position.character && position.character <= tokenLength;
+      if (found) return t;
+    }
+    return null;
+  }
 }
 
-abstract class TokenIterator extends BaseIterator {
+export class TokenIterator extends BaseIterator {
   constructor(public data: string, public rgx: RegExp = /({[^{|}]*})/g) {
     super();
     let lines = data.split('\n');
@@ -96,5 +107,29 @@ export class CallIterator extends TokenIterator {
 export class NamespaceIterator extends TokenIterator {
   constructor(public data: string) {
     super(data, /({namespace\s+([^{|}|\s]*)\s*[^{|}]*})/g);
+  }
+}
+
+export class LetIterator extends TokenIterator {
+  constructor(public data: string) {
+    super(data, /({\/*let\s*([^{|}|\s]*)\s*[^{|}]*\/{0,1}})/g);
+  }
+}
+
+export class IfIterator extends TokenIterator {
+  constructor(public data: string) {
+    super(data, /({\/*if\s*([^{|}|\s]*)\s*[^{|}]*\/{0,1}}|{\/*elseif\s*([^{|}|\s]*)\s*[^{|}]*\/{0,1}}|{\/*else\s*})/g);
+  }
+}
+
+export class ForEachIterator extends TokenIterator {
+  constructor(public data: string) {
+    super(data, /({\/*foreach\s*([^{|}|\s]*)\s*[^{|}]*\/{0,1}})/g);
+  }
+}
+
+export class SwitchIterator extends TokenIterator {
+  constructor(public data: string) {
+    super(data, /({\/*switch\s*([^{|}|\s]*)\s*[^{|}]*\/{0,1}}|{\/*case\s*([^{|}|\s]*)\s*[^{|}]*})/g);
   }
 }
